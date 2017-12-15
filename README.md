@@ -1,4 +1,6 @@
-# android-promise : promiseObject.then().then().then().error();
+# android-promise :
+
+#### promiseObject.then().then().then().error();
 
 A Javascript style Promise library for Android JVM. 
 
