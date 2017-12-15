@@ -1,5 +1,9 @@
 # android-promise :
 
+A Javascript style Promise library for Android JVM. 
+
+* Simply copy the Promise.java and past in your source foulder, it will work.
+
 ```java
 promiseObject
       .then()
@@ -8,7 +12,6 @@ promiseObject
       .error();
 ```
 
-A Javascript style Promise library for Android JVM. 
 
 ### How it works ?
 
