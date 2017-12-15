@@ -32,7 +32,7 @@ doSomeTask(int someValue, String extra)
 public Promise doSomeTask(int someValue, String extra){
     Promise p = new Promise();
     new Thread(()->{
-        // TODO : do some background operation.
+        // do some background operation.
         // When your work done, resolve the promise like below;
         // After resolve the library will pass the value to doSecondTack()
         // Suppose your resultant value is instance of MyObject, then
