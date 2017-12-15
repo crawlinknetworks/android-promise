@@ -17,7 +17,7 @@ doSomeTask(int someValue, String extra)
     .then(res -> doSecondTask((MyObject) res))       // res is result form doSomeTask()
     .then(res -> doThirdTask((OtherObject) res)))    // res is result form doThirdTask()
     .then(res -> doFourthTask((int) res)))           // res is result form doThirdTask()
-    .then(res-> doFivethTask())
+    .then(res -> doFivethTask())
     .then(res -> {
          // Consume result of the previous function
          return true;    // done
@@ -80,7 +80,7 @@ public Promise doFivethTask(){
 
 ### How to use in android?
 
-*Download the source file add into your project src.*
+*__Download the source file__ add into your project src.*
 
 __Promise.java__  Simply Copy this file into your project
 
@@ -120,20 +120,20 @@ It supports above JAVA 1.8
     
 # LICENCE
 
-/*
- * Copyright (c) 2017 CRAWLINK NETWORKS PVT. LTD.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+>
+> Copyright (c) 2017 CRAWLINK NETWORKS PVT. LTD.
+>
+> Licensed under the Apache License, Version 2.0 (the "License");
+> you may not use this file except in compliance with the License.
+> You may obtain a copy of the License at
+> 
+>  http://www.apache.org/licenses/LICENSE-2.0
+>
+> Unless required by applicable law or agreed to in writing, software
+> distributed under the License is distributed on an "AS IS" BASIS,
+> WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+> See the License for the specific language governing permissions and
+> limitations under the License.
+
  
 
