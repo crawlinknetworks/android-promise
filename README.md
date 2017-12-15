@@ -1,6 +1,6 @@
 # android-promise :
 
-A Javascript style Promise library for Android JVM. 
+A Javascript style JAVA Promise library for Android JVM. 
 
 * Simply copy the Promise.java and past in your source foulder, it will work.
 
