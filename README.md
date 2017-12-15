@@ -1,6 +1,12 @@
 # android-promise :
 
-#### promiseObject.then().then().then().error();
+```java
+promiseObject
+      .then()
+      .then()
+      .then()    // Do task one after another 'n' number of chain
+      .error();
+```
 
 A Javascript style Promise library for Android JVM. 
 
