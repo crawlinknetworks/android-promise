@@ -8,7 +8,12 @@ A Javascript style Promise library for Android JVM.
 doSomeTask(int someValue, String extra)
     .then(res -> doSecondTask((MyObject) res))       // res is result form doSomeTask()
     .then(res -> doThirdTask((OtherObject) res)))    // res is result form doThirdTask()
-    .then(res -> doFourthTask((int) res)))             // res is result form doThirdTask()
+    .then(res -> doFourthTask((int) res)))           // res is result form doThirdTask()
+    .then(res-> doFivethTask())
+    .then(res -> {
+         // Consume result of the previous function
+         return true;    // done
+    })
     .error(err -> handleError());                    // Incase of any p.reject() call from above function error will be available here 
 ```
 
@@ -66,10 +71,15 @@ public Promise doFivethTask(){
 ```
 
 ### How to use in android?
+
 *Download the source file add into your project src.*
+
 __Promise.java__  Simply Copy this file into your project
+
 __*It need JAVA 1.8 to compile__
 
+
+## Description
 
 The Promise object represents the eventual completion (or failure)
 of an asynchronous operation, and its resulting value.
@@ -98,3 +108,24 @@ followng `then()` or `error()` function.
 You can write `n` numbers of `then()` chain.
 <p>
 It supports above JAVA 1.8
+    
+    
+# LICENCE
+
+/*
+ * Copyright (c) 2017 CRAWLINK NETWORKS PVT. LTD.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+ 
+
