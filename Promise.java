@@ -1,19 +1,22 @@
 /*
- * Copyright (c) 2017 CRAWLINK NETWORKS PVT. LTD.
+ * CRAWLINK Networks Pvt Ltd. CONFIDENTIAL
+ * Copyright (c) 2017 All rights reserved.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * The source code contained or described herein and all documents
+ * related to the source code ("Material") are owned by CRAWLINK
+ * Networks Pvt Ltd. No part of the Material may be used, copied,
+ * reproduced, modified, published, uploaded,posted, transmitted,
+ * distributed, or disclosed in any way without CRAWLINK Networks
+ * Pvt Ltd. prior written permission.
  *
- *   http://www.apache.org/licenses/LICENSE-2.0
+ * No license under any patent, copyright, trade secret or other
+ * intellectual property right is granted to or conferred upon you
+ * by disclosure or delivery of the Materials, either expressly, by
+ * implication, inducement, estoppel or otherwise. Any license
+ * under such intellectual property rights must be express and
+ * approved by CRAWLINK Networks Pvt Ltd. in writing.
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
  */
- 
 
 package com.crawlink;
 
@@ -23,6 +26,7 @@ import android.os.Looper;
 import android.util.Log;
 
 import java.util.ArrayList;
+import java.util.List;
 
 /**
  * The Promise object represents the eventual completion (or failure)
@@ -63,118 +67,262 @@ public class Promise {
     private Promise child;
     private boolean isResolved;
     private Object resolvedObject;
+    private boolean isRejected;
+    private Object rejectedObject;
     private Object tag;
 
 
     public Promise() {
-        if (Looper.getMainLooper().getThread() == Thread.currentThread()) {
-            this.handler = new Handler();
-        }
+        // Trigger all promise calls in UI thread
+        // if (Looper.getMainLooper().getThread() == Thread.currentThread()) {
+        //     this.handler = new Handler();
+        // }
+
+        this.handler = new Handler(Looper.getMainLooper());
     }
 
-    public static Promise all(ArrayList<Promise> list) {
+    public static Promise chain(Object obj) {
         Promise p = new Promise();
-        if (list == null || list.size() <= 0) {
+        p.resolve(obj);
+        return p;
+    }
+
+    public static Promise all(Promise... list) {
+        Promise p = new Promise();
+        int size = 0;
+        if (list != null) {
+            size = list.length;
+        }
+        Object results[] = new Object[size];
+        if (list == null || list.length <= 0) {
             Log.w(TAG, "Promise list should not be empty!");
-            p.resolve(new ArrayList<Object>());
+            p.resolve(results);
             return p;
         }
 
-        if (list != null && list.size() > 0) {
-            new Thread(new Runnable() {
+        if (list != null && list.length > 0) {
+            new Runnable() {
                 int completedCount = 0;
-                ArrayList<Object> result = new ArrayList<Object>(list.size());
 
                 @Override
                 public void run() {
-                    for (int i = 0; i < list.size(); i++) {
-                        Promise promise = list.get(i);
+                    for (int i = 0; i < list.length; i++) {
+                        Promise promise = list[i];
                         promise.setTag(i);
                         promise.then(res -> {
-                            result.set((int) promise.getTag(), res);
-                            completed();
-                            return true;
+                            results[(int) promise.getTag()] = res;
+                            completed(null);
+                            return res;
                         }).error(err -> {
-                            completed();
+                            completed(err);
                         });
                     }
                 }
 
-                private void completed() {
+                private void completed(Object err) {
                     completedCount++;
-                    if (completedCount == list.size()) {
-                        p.resolve(result);
+                    if (err != null) {
+                        p.reject(err);
+                    } else if (completedCount == list.length) {
+                        p.resolve(results);
                     }
                 }
-
-            }).start();
+            }.run();
         } else {
             Log.w(TAG, "Promises should not be empty!");
-            p.resolve(new ArrayList<Object>());
+            p.resolve(results);
         }
+
 
         return p;
     }
 
-    public static Promise map(ArrayList<Object> list, OnSuccessListener listener) {
+    public static Promise series(List<?> list, OnSuccessListener listener) {
         Promise p = new Promise();
-        Handler handler = null;
+        int size = 0;
+        if (list != null) {
+            size = list.size();
+        }
+        ArrayList<Object> results = new ArrayList<>(size);
         if (list == null || listener == null || list.size() <= 0) {
             Log.e(TAG, "Arguments should not be NULL!");
-            return null;
-        }
-        if (Looper.getMainLooper().getThread() == Thread.currentThread()) {
-            handler = new Handler();
+            p.resolve(results);
+            return p;
         }
 
-        final Handler finalHandler = handler;
-        new Thread(new Runnable() {
+        new Runnable() {
+            int index = -1;
             int completedCount = 0;
-            ArrayList<Object> result = new ArrayList<>(list.size());
 
             @Override
             public void run() {
-                if (list != null && list.size() > 0) {
-                    for (int i = 0; i < list.size(); i++) {
-                        if (finalHandler != null) {
-                            int finalI = i;
-                            finalHandler.post(() -> {
-                                handleSuccess(finalI, list.get(finalI));
-                            });
-                        } else {
-                            handleSuccess(i, list.get(i));
-                        }
-                    }
+                index++;
+                if (index < list.size()) {
+                    handleSuccess(index, list.get(index));
                 } else {
-                    p.resolve(result);
+                    p.resolve(results);
                 }
             }
 
             private void handleSuccess(int index, Object object) {
                 Object res = listener.onSuccess(object);
-                result.add(index, res);
+                results.add(index, res);
                 if (res instanceof Promise) {
                     Promise pro = (Promise) res;
                     pro.setTag(index);
                     pro.then(r -> {
-                        result.set((int) pro.getTag(), r);
-                        completed();
-                        return true;
-                    }).error(err -> completed());
-                } else {
-                    completed();
+                        results.set((int) pro.getTag(), r);
+                        if (!completed(null)) {
+                            run();
+                        }
+                        return r;
+                    }).error(err -> completed(err));
+                } else if (!completed(null)) {
+                    run();
                 }
 
             }
 
-            private void completed() {
+            private boolean completed(Object err) {
                 completedCount++;
-                if (completedCount == list.size()) {
-                    p.resolve(result);
+                if (err != null) {
+                    p.reject(err);
+                } else if (completedCount == list.size()) {
+                    p.resolve(results);
+                    return true;
+                }
+                return false;
+            }
+
+        }.run();
+
+        return p;
+    }
+
+    public static Promise parallel(List<?> list, OnSuccessListener listener) {
+        Promise p = new Promise();
+        int size = 0;
+        if (list != null) {
+            size = list.size();
+        }
+        ArrayList<Object> results = new ArrayList<>(size);
+        if (list == null || listener == null || list.size() <= 0) {
+            Log.e(TAG, "Arguments should not be NULL!");
+            p.resolve(results);
+            return p;
+        }
+
+        new Runnable() {
+            int completedCount = 0;
+
+            @Override
+            public void run() {
+                if (list.size() > 0) {
+                    for (int i = 0; i < list.size(); i++) {
+                        handleSuccess(i, list.get(i));
+                    }
+                } else {
+                    p.resolve(results);
                 }
             }
 
-        }).start();
+            private void handleSuccess(int index, Object object) {
+                Object res = listener.onSuccess(object);
+                results.add(index, res);
+                if (res instanceof Promise) {
+                    Promise pro = (Promise) res;
+                    pro.setTag(index);
+                    pro.then(r -> {
+                        results.set((int) pro.getTag(), r);
+                        completed(null);
+                        return r;
+                    }).error(err -> completed(err));
+                } else {
+                    completed(null);
+                }
+
+            }
+
+            private void completed(Object err) {
+                completedCount++;
+                if (err != null) {
+                    p.reject(err);
+                } else if (completedCount == list.size()) {
+                    p.resolve(results);
+                }
+            }
+
+        }.run();
+
+        return p;
+    }
+
+    /**
+     * When you want to execute some operations parallelly with some parallel excution limit,
+     * then you can use this function.
+     *
+     * @param list     List over which you want to execute operation.
+     * @param limit    this is limit to your parallel execution.
+     * @param listener
+     * @return This will return the result after completion of entire execution.
+     */
+    public static Promise parallelWithLimit(List<?> list, int limit, OnSuccessListener listener) {
+
+        Promise p = new Promise();
+        if (list == null || listener == null || list.size() <= 0) {
+            Log.e(TAG, "Arguments should not be NULL!");
+            return null;
+        }
+
+        if (limit <= 0) {
+            Log.e(TAG, "Limit argument should not be <= ZERO!");
+            return null;
+        }
+
+        int[] count = new int[1];
+        int[] iteration = new int[1];
+        ArrayList childList = new ArrayList<>();
+
+        Promise
+                .series(list, object -> {
+                    Promise pro = new Promise();
+                    count[0]++;
+                    iteration[0]++;
+                    Log.i(TAG, "parallelWithLimit: iteration " + iteration[0]);
+                    if (count[0] < limit) {
+                        childList.add(object);
+                        if (iteration[0] == list.size()) {
+                            parallel(childList, listener)
+                                    .then(res -> {
+                                        pro.resolve(res);
+                                        count[0] = 0;
+                                        childList.clear();
+                                        return res;
+                                    });
+                        } else {
+                            pro.resolve(true);
+                        }
+
+                    } else if (count[0] == limit) {
+                        Log.i(TAG, "parallelWithLimit: Executiong group paralely");
+                        Log.i(TAG, "parallelWithLimit: ========================");
+                        childList.add(object);
+                        parallel(childList, listener)
+                                .then(res -> {
+                                    pro.resolve(res);
+                                    count[0] = 0;
+                                    childList.clear();
+                                    return res;
+                                });
+                    }
+
+                    return pro;
+
+                })
+                .then(res -> {
+                    p.resolve(res);
+                    return res;
+                });
 
         return p;
     }
@@ -188,12 +336,18 @@ public class Promise {
      * @return This will return the resultant value you passed in the function call
      */
     public Object resolve(Object object) {
-        isResolved = true;
-        resolvedObject = object;
-        if (handler != null) {
-            handler.post(() -> handleSuccess(child, object));
+        if (!isResolved) {
+            isResolved = true;
+            resolvedObject = object;
+            if (onSuccessListener != null) {
+                if (handler != null) {
+                    handler.post(() -> handleSuccess(child, resolvedObject));
+                } else {
+                    new Thread(() -> handleSuccess(child, resolvedObject)).start();
+                }
+            }
         } else {
-            handleSuccess(child, object);
+            Log.e(TAG, "The promise already resolved, you can not resolve same promise multiple time!");
         }
         return object;
     }
@@ -207,14 +361,23 @@ public class Promise {
      * @return This will return the error value you passed in the function call
      */
     public Object reject(Object object) {
-        if (handler != null) {
-            handler.post(() -> {
-                handleError(object);
-            });
+        if (!isRejected) {
+            isRejected = true;
+            rejectedObject = object;
+            if (onErrorListener != null) {
+                if (handler != null) {
+                    handler.post(() -> handleError(onErrorListener));
+                } else {
+                    new Thread(() -> handleError(rejectedObject)).start();
+                }
+            } else {
+                if (child != null) {
+                    child.reject(object);
+                }
+            }
         } else {
-            handleError(object);
+            Log.e(TAG, "The promise already rejected, you can not reject same promise multiple time!");
         }
-
         return object;
     }
 
@@ -225,9 +388,17 @@ public class Promise {
      * @param listener OnSuccessListener
      * @return It returns a promise for satisfying next chain call.
      */
+
     public Promise then(OnSuccessListener listener) {
         onSuccessListener = listener;
         child = new Promise();
+        if (isResolved) {
+            if (handler != null) {
+                handler.post(() -> handleSuccess(child, resolvedObject));
+            } else {
+                new Thread(() -> handleSuccess(child, resolvedObject)).start();
+            }
+        }
         return child;
     }
 
@@ -239,6 +410,13 @@ public class Promise {
      */
     public void error(OnErrorListener listener) {
         onErrorListener = listener;
+        if (isRejected) {
+            if (handler != null) {
+                handler.post(() -> handleError(onErrorListener));
+            } else {
+                new Thread(() -> handleError(rejectedObject)).start();
+            }
+        }
     }
 
     private void handleSuccess(Promise child, Object object) {
@@ -251,7 +429,12 @@ public class Promise {
                         p.onSuccessListener = child.onSuccessListener;
                         p.onErrorListener = child.onErrorListener;
                         p.child = child.child;
-                        child = p;
+
+                        if (p.isResolved) {
+                            p.handleSuccess(p.child, p.resolvedObject);
+                        } else if (p.isRejected) {
+                            p.handleError(p.rejectedObject);
+                        }
                     }
                 } else if (child != null) {
                     child.resolve(res);
@@ -272,14 +455,13 @@ public class Promise {
         }
     }
 
-    public Object getTag() {
+    private Object getTag() {
         return tag;
     }
 
-    public void setTag(Object tag) {
+    private void setTag(Object tag) {
         this.tag = tag;
     }
-
 
     public interface OnSuccessListener {
         Object onSuccess(Object object);
@@ -288,5 +470,6 @@ public class Promise {
     public interface OnErrorListener {
         void onError(Object object);
     }
+
 
 }
